@@ -1,0 +1,188 @@
+/* =========================================================
+   Tina Photos – pix.css (production-clean)sdsdsds
+   Grid + Lightbox + Navigation
+   ========================================================= */
+
+/* ---------- Gallery Grid ---------- */
+.tina-gallery{
+  display:grid;
+  grid-template-columns:repeat(var(--tina-cols,4), minmax(0,1fr));
+  gap:16px;
+}
+
+@media (max-width: 900px){
+  .tina-gallery{ grid-template-columns:repeat(3, 1fr); }
+}
+@media (max-width: 600px){
+  .tina-gallery{ grid-template-columns:repeat(2, 1fr); }
+}
+
+/* Link wrapper */
+.tina-gallery__item{
+  display:block;
+  text-decoration:none;
+  color:inherit;
+}
+
+/* Image thumbnails */
+.tina-gallery__item img{
+  width:100%;
+  aspect-ratio:1/1;
+  object-fit:cover;
+  display:block;
+  border-radius:12px;
+
+  transform:translateZ(0);
+  transition:transform .18s ease, filter .18s ease, box-shadow .18s ease;
+}
+
+/* Hover polish */
+.tina-gallery__item:hover img{
+  transform:scale(1.02);
+  filter:brightness(1.05);
+  box-shadow:0 10px 30px rgba(0,0,0,.18);
+}
+
+/* Focus for keyboard accessibility */
+.tina-gallery__item:focus-visible{
+  outline:3px solid rgba(255,255,255,.35);
+  outline-offset:4px;
+  border-radius:14px;
+}
+
+/* ---------- Lightbox Overlay ---------- */
+.tina-lightbox{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+
+  background:rgba(0,0,0,.9);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  padding:24px;
+  cursor:default;
+}
+
+/* Lightbox image */
+.tina-lb-img{
+  max-width:90vw;
+  max-height:90vh;
+  border-radius:12px;
+
+  box-shadow:0 0 30px rgba(0,0,0,.6);
+
+  /* Allow vertical scroll gestures; keep horizontal swipe for JS */
+  touch-action: pan-y;
+
+  /* Prevent iOS tap highlight */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- Lightbox Buttons ---------- */
+.tina-lb-btn{
+  position:absolute;
+  border:0;
+  background:rgba(255,255,255,.12);
+  color:#fff;
+
+  width:48px;
+  height:48px;
+  border-radius:999px;
+
+  font-size:30px;
+  line-height:48px;
+
+  cursor:pointer;
+  user-select:none;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  box-shadow:0 4px 12px rgba(0,0,0,.4);
+
+  transition:
+    background .15s ease,
+    box-shadow .15s ease;
+}
+
+.tina-lb-btn:hover{
+  background:rgba(255,255,255,.22);
+  box-shadow:0 6px 16px rgba(0,0,0,.5);
+}
+
+.tina-lb-btn:active{
+  background:rgba(255,255,255,.28);
+}
+.tina-lb-close{
+  top:18px;
+  right:18px;
+}
+
+.tina-lb-prev{
+  left:18px;
+  top:50%;
+  transform:translateY(-50%);
+}
+
+.tina-lb-next{
+  right:18px;
+  top:50%;
+  transform:translateY(-50%);
+}
+
+/* On small screens, keep buttons easy to tap */
+@media (max-width: 600px){
+  .tina-lightbox{ padding:14px; }
+  .tina-lb-btn{ width:52px; height:52px; line-height:52px; }
+  .tina-lb-prev{ left:10px; }
+  .tina-lb-next{ right:10px; }
+  .tina-lb-close{ top:10px; right:10px; }
+}
+.tina-lb-stage {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+/* Both images overlap perfectly */
+.tina-lb-stage img {
+  position: absolute;
+  inset: 0;
+
+  max-width: 100%;
+  max-height: 100%;
+
+  object-fit: contain;
+  border-radius: 12px;
+
+  transition: opacity .25s ease;
+}
+
+/* Current visible image */
+.tina-lb-current {
+  opacity: 1;
+  z-index: 2;
+}
+
+/* Next image underneath */
+.tina-lb-next-img {
+  opacity: 0;
+  z-index: 1;
+}
+
+/* Fade curtain */
+.tina-lb-fade {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s ease;
+}
+
+.tina-lb-fade.is-on {
+  opacity: 1;
+}
