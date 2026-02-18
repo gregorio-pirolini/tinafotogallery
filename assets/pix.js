@@ -1,94 +1,143 @@
 (function () {
+
   function buildItemsFromGallery(galleryEl) {
     return Array.from(galleryEl.querySelectorAll('a[data-tina-lightbox]'))
-      .map(a => a.getAttribute("href"))
-      .filter(Boolean);
+      .map(a => ({
+        src: a.getAttribute("href"),
+        alt: a.dataset.tinaAlt || a.querySelector("img")?.alt || "",
+        caption: a.dataset.tinaCaption || "",
+        desc: a.dataset.tinaDesc || ""
+      }))
+      .filter(x => x.src);
+  }
+
+  function buildItemsFromPage() {
+    const galleries = document.querySelectorAll(".tina-gallery");
+    let items = [];
+    galleries.forEach(g => { items = items.concat(buildItemsFromGallery(g)); });
+
+    // dedupe by src (works for objects)
+    const seen = new Set();
+    items = items.filter(it => {
+      if (!it.src) return false;
+      if (seen.has(it.src)) return false;
+      seen.add(it.src);
+      return true;
+    });
+
+    return items;
   }
 
   function openLightbox(items, startIndex) {
-    let index = startIndex;
+    let index = Math.max(0, startIndex);
 
-	  // Save scroll position
-const scrollY = window.scrollY;
+    // Save scroll position + lock body (iOS-safe)
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
 
-// Lock body start
-document.body.style.position = "fixed";
-document.body.style.top = `-${scrollY}px`;
-document.body.style.left = "0";
-document.body.style.right = "0";scrollY
-// Lock body end
     const overlay = document.createElement("div");
     overlay.className = "tina-lightbox";
     overlay.innerHTML = `
-      <button class="tina-lb-btn tina-lb-close" aria-label="Close">×</button>
-<button class="tina-lb-btn tina-lb-prev" aria-label="Previous">‹</button>
-<img class="tina-lb-img" alt="">
-<button class="tina-lb-btn tina-lb-next" aria-label="Next">›</button>
-    `;
-const fade = document.createElement("div");
-fade.className = "tina-lb-fade";
-overlay.appendChild(fade);
+      <button class="tina-lb-btn tina-lb-close" aria-label="Close">
+  <svg viewBox="0 0 24 24" width="20" height="20">
+    <path d="M6 6l12 12M18 6l-12 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </svg>
+</button>
+      <button class="tina-lb-btn tina-lb-prev" aria-label="Previous">
+  <svg viewBox="0 0 24 24" width="22" height="22">
+    <path d="M15 18l-6-6 6-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
 
-    
+
+      <img class="tina-lb-img" alt="">
+      <div class="tina-lb-caption" aria-live="polite"></div>
+      <button class="tina-lb-btn tina-lb-next" aria-label="Next">
+  <svg viewBox="0 0 24 24" width="22" height="22">
+    <path d="M9 6l6 6-6 6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
+    `;
+
+    // Fade curtain (stable "transition")
+    const fade = document.createElement("div");
+    fade.className = "tina-lb-fade";
+    overlay.appendChild(fade);
 
     const img = overlay.querySelector(".tina-lb-img");
     const btnPrev = overlay.querySelector(".tina-lb-prev");
     const btnNext = overlay.querySelector(".tina-lb-next");
     const btnClose = overlay.querySelector(".tina-lb-close");
+    const captionEl = overlay.querySelector(".tina-lb-caption");
 
-const currentImg = overlay.querySelector(".tina-lb-current");
-const nextImg = overlay.querySelector(".tina-lb-next-img");
+    function applyCaption() {
+      const it = items[index];
+      const cap = (it.caption || it.desc || "").trim();
+      captionEl.textContent = cap;
+      captionEl.style.display = cap ? "" : "none";
+    }
 
-function render() {
-  // Fade to black quickly
-  fade.classList.add("is-on");
+    function preloadNeighbors() {
+      const nextIndex = (index + 1) % items.length;
+      const prevIndex = (index - 1 + items.length) % items.length;
+      new Image().src = items[nextIndex].src;
+      new Image().src = items[prevIndex].src;
+    }
 
-  const targetSrc = items[index];
+    function render() {
+      const it = items[index];
+      if (!it) return;
 
-  // Swap image while black
-  setTimeout(() => {
-    img.src = targetSrc;
+      // Caption can update immediately
+      applyCaption();
 
-    // When image is ready, fade back
-    img.onload = () => {
-      fade.classList.remove("is-on");
-    };
+      // Fade to black quickly
+      fade.classList.add("is-on");
 
-    // If cached and onload fires too fast, still remove fade shortly
-    setTimeout(() => fade.classList.remove("is-on"), 180);
-  }, 120);
+      const targetSrc = it.src;
+      const targetAlt = it.alt || "";
 
-  // Preload neighbors (keep this)
-  const nextIndex = (index + 1) % items.length;
-  const prevIndex = (index - 1 + items.length) % items.length;
-  new Image().src = items[nextIndex];
-  new Image().src = items[prevIndex];
-}
+      setTimeout(() => {
+        img.onload = () => {
+          fade.classList.remove("is-on");
+        };
+
+        img.src = targetSrc;
+        img.alt = targetAlt;
+
+        // fallback in case onload doesn't fire (cached edge)
+        setTimeout(() => fade.classList.remove("is-on"), 220);
+
+        preloadNeighbors();
+      }, 120);
+    }
 
     function close() {
-  document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey);
 
-  // Restore scroll
-  const scrollY = document.body.style.top;
-  document.body.style.position = "";
-  document.body.style.top = "";
-  document.body.style.left = "";
-  document.body.style.right = "";
+      // Restore scroll
+      const top = document.body.style.top;
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      window.scrollTo(0, parseInt(top || "0", 10) * -1);
 
-  window.scrollTo(0, parseInt(scrollY || "0") * -1);
-
-  overlay.remove();
-}
+      overlay.remove();
+    }
 
     function prev() {
-  index = (index - 1 + items.length) % items.length;
-  render();
-}
+      index = (index - 1 + items.length) % items.length;
+      render();
+    }
 
-function next() {
-  index = (index + 1) % items.length;
-  render();
-}
+    function next() {
+      index = (index + 1) % items.length;
+      render();
+    }
 
     function onKey(e) {
       if (e.key === "Escape") close();
@@ -96,23 +145,22 @@ function next() {
       if (e.key === "ArrowRight") next();
     }
 
-    // Click behaviors
+    // Close when clicking backdrop (not buttons/image)
     overlay.addEventListener("click", (e) => {
-      // click on background closes
       if (e.target === overlay) close();
     });
+
     btnClose.addEventListener("click", close);
     btnPrev.addEventListener("click", prev);
     btnNext.addEventListener("click", next);
-
     document.addEventListener("keydown", onKey);
 
-    // --- Swipe (mobile) on the image ---
-    var MIN_DISTANCE = 50;      // px
-    var MAX_SWIPE_TIME = 500;   // ms
-    var MAX_VERTICAL = 80;      // px (ignore mostly vertical swipes)
+    // Swipe (mobile) on the image
+    const MIN_DISTANCE = 50;
+    const MAX_SWIPE_TIME = 500;
+    const MAX_VERTICAL = 80;
 
-    var startX = null, startY = null, startTime = null;
+    let startX = null, startY = null, startTime = null;
 
     function onTouchStart(e) {
       if (!e.touches || !e.touches[0]) return;
@@ -131,7 +179,7 @@ function next() {
       const endY = t.clientY;
       const dt = Date.now() - startTime;
 
-      const dx = endX - startX; // >0 swipe right, <0 swipe left
+      const dx = endX - startX;
       const dy = endY - startY;
 
       const absX = Math.abs(dx);
@@ -143,8 +191,6 @@ function next() {
       if (absX < MIN_DISTANCE) return;
       if (absY > MAX_VERTICAL) return;
 
-      // common gallery behavior:
-      // swipe left => next, swipe right => prev
       if (dx < 0) next();
       else prev();
     }
@@ -157,19 +203,18 @@ function next() {
   }
 
   document.addEventListener("click", function (e) {
-  const a = e.target.closest('a[data-tina-lightbox]');
-  if (!a) return;
+    const a = e.target.closest('a[data-tina-lightbox]');
+    if (!a) return;
 
-  e.preventDefault();
+    e.preventDefault();
 
-  const galleries = document.querySelectorAll(".tina-gallery");
-  if (!galleries.length) return;
+    const items = buildItemsFromPage();
+    if (!items.length) return;
 
-  let items = [];
-  galleries.forEach(g => { items = items.concat(buildItemsFromGallery(g)); });
-  items = Array.from(new Set(items)); // dedupe
+    const href = a.getAttribute("href");
+    const startIndex = Math.max(0, items.findIndex(it => it.src === href));
 
-  const startIndex = Math.max(0, items.indexOf(a.getAttribute("href")));
-  openLightbox(items, startIndex);
-});
+    openLightbox(items, startIndex);
+  });
+
 })();

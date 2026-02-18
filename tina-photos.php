@@ -10,6 +10,10 @@ if (!defined('ABSPATH')) exit;
 define('TINA_PHOTOS_VER', '1.0.0');
 define('TINA_PHOTOS_URL', plugin_dir_url(__FILE__));
 
+
+
+
+
 $GLOBALS['tina_photos_assets_needed'] = false;
 
 add_action('init', function () {
@@ -82,14 +86,25 @@ add_shortcode('tina_gallery', function ($atts) {
   ?>
   <div class="tina-gallery" style="--tina-cols: <?php echo esc_attr($cols); ?>;">
     <?php while ($q->have_posts()): $q->the_post();
+    $att_id = get_post_thumbnail_id(get_the_ID());
+  $alt    = get_post_meta($att_id, '_wp_attachment_image_alt', true);
+  $cap    = wp_get_attachment_caption($att_id);                 // caption
+  $desc   = get_post_field('post_content', $att_id);            // description
       $thumb = get_the_post_thumbnail_url(get_the_ID(), 'large');
       $full  = get_the_post_thumbnail_url(get_the_ID(), 'full');
       if (!$thumb || !$full) continue;
       $title = get_the_title();
       ?>
-      <a class="tina-gallery__item" href="<?php echo esc_url($full); ?>" data-tina-lightbox>
-        <img loading="lazy" src="<?php echo esc_url($thumb); ?>" alt="<?php echo esc_attr($title); ?>">
-      </a>
+      <a class="tina-gallery__item"
+   href="<?php echo esc_url($full); ?>"
+   data-tina-lightbox
+   data-tina-alt="<?php echo esc_attr($alt ?: $title); ?>"
+   data-tina-caption="<?php echo esc_attr($cap); ?>"
+   data-tina-desc="<?php echo esc_attr(wp_strip_all_tags($desc)); ?>">
+  <img loading="lazy"
+       src="<?php echo esc_url($thumb); ?>"
+       alt="<?php echo esc_attr($alt ?: $title); ?>">
+</a>
     <?php endwhile; wp_reset_postdata(); ?>
   </div>
   <?php

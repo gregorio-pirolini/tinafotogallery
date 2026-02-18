@@ -81,7 +81,8 @@
 }
 
 /* ---------- Lightbox Buttons ---------- */
-.tina-lb-btn{
+
+.tina-lb-btn {
   position:absolute;
   border:0;
   background:rgba(255,255,255,.12);
@@ -91,11 +92,8 @@
   height:48px;
   border-radius:999px;
 
-  font-size:30px;
-  line-height:48px;
-
+          /* important */
   cursor:pointer;
-  user-select:none;
 
   display:flex;
   align-items:center;
@@ -107,7 +105,9 @@
     background .15s ease,
     box-shadow .15s ease;
 }
-
+.tina-lb-btn svg {
+  display:block;
+}
 .tina-lb-btn:hover{
   background:rgba(255,255,255,.22);
   box-shadow:0 6px 16px rgba(0,0,0,.5);
@@ -174,15 +174,28 @@
 }
 
 /* Fade curtain */
-.tina-lb-fade {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.9);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .16s ease;
+.tina-lb-fade{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.9);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .16s ease;
 }
+.tina-lb-fade.is-on{ opacity:1; }
 
-.tina-lb-fade.is-on {
-  opacity: 1;
+/* captions */
+.tina-lb-caption{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  color:rgba(255,255,255,.85);
+  font-size:14px;
+  text-align:center;
+  max-width:min(900px, 86vw);
+  padding:8px 12px;
+  border-radius:999px;
+  background:rgba(0,0,0,.35);
+  backdrop-filter: blur(6px);
 }
