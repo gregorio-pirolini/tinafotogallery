@@ -98,6 +98,7 @@ add_shortcode('tina_gallery', function ($atts) {
       <a class="tina-gallery__item"
    href="<?php echo esc_url($full); ?>"
    data-tina-lightbox
+   id="<?php echo esc_attr(get_the_ID()); ?>"
    data-tina-alt="<?php echo esc_attr($alt ?: $title); ?>"
    data-tina-caption="<?php echo esc_attr($cap); ?>"
    data-tina-desc="<?php echo esc_attr(wp_strip_all_tags($desc)); ?>">

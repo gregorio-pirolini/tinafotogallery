@@ -1,15 +1,33 @@
 (function () {
+// 1) helper functions (top of file inside IIFE)
+let tinaScrollY = 0;
+function setHashForId(id) {
+  if (!id) return;
+  history.replaceState(null, "", "#photo=" + encodeURIComponent(id));
+}
+
+function getHashPhotoId() {
+  const m = location.hash.match(/^#photo=([^#]+)$/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function clearHash() {
+  if (location.hash.startsWith("#photo=")) {
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+}
 
   function buildItemsFromGallery(galleryEl) {
-    return Array.from(galleryEl.querySelectorAll('a[data-tina-lightbox]'))
-      .map(a => ({
-        src: a.getAttribute("href"),
-        alt: a.dataset.tinaAlt || a.querySelector("img")?.alt || "",
-        caption: a.dataset.tinaCaption || "",
-        desc: a.dataset.tinaDesc || ""
-      }))
-      .filter(x => x.src);
-  }
+  return Array.from(galleryEl.querySelectorAll('a[data-tina-lightbox]'))
+    .map(a => ({
+      id: a.id || a.dataset.tinaId || "",   // ✅ add this
+      src: a.getAttribute("href"),
+      alt: a.dataset.tinaAlt || a.querySelector("img")?.alt || "",
+      caption: a.dataset.tinaCaption || "",
+      desc: a.dataset.tinaDesc || ""
+    }))
+    .filter(x => x.src);
+}
 
   function buildItemsFromPage() {
     const galleries = document.querySelectorAll(".tina-gallery");
@@ -27,19 +45,56 @@
 
     return items;
   }
+ 
+
+  function disableSmoothScroll() {
+  document.documentElement.style.scrollBehavior = "auto";
+}
+
+function enableSmoothScroll() {
+  document.documentElement.style.scrollBehavior = "";
+}
+
+function lockBodyScroll() {
+  tinaScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+
+  disableSmoothScroll(); // <— key
+
+  document.body.dataset.tinaScrollY = String(tinaScrollY);
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${tinaScrollY}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
+  document.body.style.width = "100%";
+}
+
+function unlockBodyScroll() {
+  const saved = parseInt(document.body.dataset.tinaScrollY || "0", 10);
+
+  // keep smooth disabled until AFTER scroll restore
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  document.body.style.width = "";
+  document.body.dataset.tinaScrollY = "";
+
+  window.scrollTo(0, saved);
+
+  // re-enable on next tick
+  setTimeout(enableSmoothScroll, 0);
+}
 
   function openLightbox(items, startIndex) {
-    let index = Math.max(0, startIndex);
+  let index = Math.max(0, startIndex);
 
-    // Save scroll position + lock body (iOS-safe)
-    const scrollY = window.scrollY;
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = "0";
-    document.body.style.right = "0";
+  lockBodyScroll();
+ 
 
-    const overlay = document.createElement("div");
-    overlay.className = "tina-lightbox";
+  const overlay = document.createElement("div");
+  overlay.className = "tina-lightbox";
+
+     
     overlay.innerHTML = `
       <button class="tina-lb-btn tina-lb-close" aria-label="Close">
   <svg viewBox="0 0 24 24" width="20" height="20">
@@ -107,7 +162,7 @@
 
         img.src = targetSrc;
         img.alt = targetAlt;
-
+        setHashForId(it.id);        // fallback in case onload doesn't fire (cached edge)
         // fallback in case onload doesn't fire (cached edge)
         setTimeout(() => fade.classList.remove("is-on"), 220);
 
@@ -119,14 +174,15 @@
       document.removeEventListener("keydown", onKey);
 
       // Restore scroll
-      const top = document.body.style.top;
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.right = "";
-      window.scrollTo(0, parseInt(top || "0", 10) * -1);
-
+      // const top = document.body.style.top;
+      // document.body.style.position = "";
+      // document.body.style.top = "";
+      // document.body.style.left = "";
+      // document.body.style.right = "";
+      // window.scrollTo(0, parseInt(top || "0", 10) * -1);
+      unlockBodyScroll() ;
       overlay.remove();
+      clearHash();
     }
 
     function prev() {
@@ -216,5 +272,30 @@
 
     openLightbox(items, startIndex);
   });
+
+window.addEventListener("popstate", () => {
+  const overlay = document.querySelector(".tina-lightbox");
+  if (overlay) {
+    unlockBodyScroll();
+    overlay.remove();
+    clearHash();
+  }
+});
+ // 4) auto-open if a hash is present (bottom of file)
+function openFromHash() {
+  const id = getHashPhotoId();
+  if (!id) return;
+
+  const items = buildItemsFromPage();
+  const idx = items.findIndex(it => it.id === id);
+  if (idx >= 0) openLightbox(items, idx);
+}
+
+
+// Try on initial load
+window.addEventListener("load", openFromHash);
+
+ 
+
 
 })();
