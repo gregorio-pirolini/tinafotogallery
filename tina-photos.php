@@ -13,7 +13,6 @@ define('TINA_PHOTOS_URL', plugin_dir_url(__FILE__));
 
 
 
-
 $GLOBALS['tina_photos_assets_needed'] = false;
 
 add_action('init', function () {
@@ -85,28 +84,47 @@ add_shortcode('tina_gallery', function ($atts) {
   $cols = max(2, min(6, intval($atts['columns'])));
   ?>
   <div class="tina-gallery" style="--tina-cols: <?php echo esc_attr($cols); ?>;">
-    <?php while ($q->have_posts()): $q->the_post();
-    $att_id = get_post_thumbnail_id(get_the_ID());
-  $alt    = get_post_meta($att_id, '_wp_attachment_image_alt', true);
-  $cap    = wp_get_attachment_caption($att_id);                 // caption
-  $desc   = get_post_field('post_content', $att_id);            // description
-      $thumb = get_the_post_thumbnail_url(get_the_ID(), 'large');
-      $full  = get_the_post_thumbnail_url(get_the_ID(), 'full');
-      if (!$thumb || !$full) continue;
-      $title = get_the_title();
-      ?>
-      <a class="tina-gallery__item"
-   href="<?php echo esc_url($full); ?>"
-   data-tina-lightbox
-   id="<?php echo esc_attr(get_the_ID()); ?>"
-   data-tina-alt="<?php echo esc_attr($alt ?: $title); ?>"
-   data-tina-caption="<?php echo esc_attr($cap); ?>"
-   data-tina-desc="<?php echo esc_attr(wp_strip_all_tags($desc)); ?>">
-  <img loading="lazy"
-       src="<?php echo esc_url($thumb); ?>"
-       alt="<?php echo esc_attr($alt ?: $title); ?>">
-</a>
-    <?php endwhile; wp_reset_postdata(); ?>
+  
+  
+  <?php while ($q->have_posts()): $q->the_post();
+
+  $photo_id = get_the_ID();
+  $att_id   = get_post_thumbnail_id($photo_id);
+  if (!$att_id) continue;
+
+  $alt  = get_post_meta($att_id, '_wp_attachment_image_alt', true);
+  $cap  = wp_get_attachment_caption($att_id);
+  $desc = get_post_field('post_content', $att_id);
+  $title = get_the_title($photo_id);
+
+  $full = wp_get_attachment_image_url($att_id, 'full');
+  if (!$full) continue;
+
+  // ✅ Let WP generate responsive <img> with srcset/sizes
+  $img_html = wp_get_attachment_image(
+  $att_id,
+  'medium',
+  false,
+  [
+    'loading'  => 'lazy',
+    'decoding' => 'async',
+    'alt'      => $alt ?: $title,
+    'class'    => 'tina-gallery__thumb',
+    'sizes'    => '(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 220px'
+  ]
+);
+
+  ?>
+  <a class="tina-gallery__item"
+     href="<?php echo esc_url($full); ?>"
+     data-tina-lightbox
+     id="<?php echo esc_attr($att_id); ?>"
+     data-tina-alt="<?php echo esc_attr($alt ?: $title); ?>"
+     data-tina-caption="<?php echo esc_attr($cap); ?>"
+     data-tina-desc="<?php echo esc_attr(wp_strip_all_tags($desc)); ?>">
+    <?php echo $img_html; ?>
+  </a>
+<?php endwhile; wp_reset_postdata(); ?>
   </div>
   <?php
 
@@ -116,7 +134,7 @@ add_shortcode('tina_gallery', function ($atts) {
 add_action('wp_enqueue_scripts', function () {
   $base = plugin_dir_url(__FILE__);
 
-  wp_enqueue_style('tina-photos', $base.'assets/pix.css', [], '1.0.0');
+  wp_enqueue_style('tina-photos', $base.'assets/pix.css', [], '2.0.0');
   wp_enqueue_script('tina-photos', $base.'assets/pix.js', [], '1.0.0', true);
 });
 
